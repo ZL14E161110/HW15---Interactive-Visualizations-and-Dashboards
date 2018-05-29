@@ -1,23 +1,164 @@
 # HW15---Interactive-Visualizations-and-Dashboards
 ## Belly Button Biodiversity
-In this assignment, you will build an interactive dashboard to explore the [Belly Button Biodiversity DataSet](http://robdunnlab.com/projects/belly-button-biodiversity/).
+In this assignment, an interactive dashboard to explore the [Belly Button Biodiversity DataSet](http://robdunnlab.com/projects/belly-button-biodiversity/) will be built. 
 
-## Step 1 - Flask API
+## Heroku Deployment
+* the interactive dashboard webpage has been deployed to: [https://hw15-belly-button-biodiversity.herokuapp.com/](https://hw15-belly-button-biodiversity.herokuapp.com/).
 
-Use Flask to design an API for your dataset and to serve the HTML and JavaScript required for your dashboard page. Note: We recommend using the sqlite database file and SQLAlchemy inside of your Flask application code, but you are permitted to read the CSV data directly into Pandas DataFrames for this assignment. You will still need to output the data as JSON in the format specified in the routes below.
+## Steps
+* The following explain the steps of work. 
 
-* First, create a template called `index.html` for your dashboard landing page. Use the Bootstrap grid system to create the structure of the dashboard page.
+### Step 1 - Flask API
+Use Flask to design an API for your dataset and to serve the HTML and JavaScript required for your dashboard page. 
 
-* Next, create the following routes for your api.
+1. First, create a template called `index.html` for dashboard landing page with Bootstrap grid system.
+```html
+<!DOCTYPE html>
+<html lang="en">
 
-```python
-@app.route("/")
-    """Return the dashboard homepage."""
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>Belly Button Biodiversity Dashboard</title>
+  <!-- Bootstrap CSS -->
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.1/css/bootstrap.min.css">
+  <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+</head>
+
+<body>
+  <div class="container-fluid">
+  	<div class="jumbotron text-center mt-5 mb-5" style="background-color:lightblue;">
+    	<h1>Belly Button Biodiversity Dashboard</h1>
+        <p> Use the interactive charts below to explore the dataset</p>
+    </div>
+  </div>
+
+  <div class="container-fluid">
+	<div class="row mt-5 mb-5">
+	  <div class="col-lg-2 mr-4">
+	    <!-- Create DropDown -->
+	    <div class="col-lg-12 text-center rounded mb-5 ml-2 pb-1" style="background-color:lightblue;">
+	      <div class="alert alert-primary">SELECT Samples:</div>
+	      <div class="alert alert-light ">
+	      	<select id="selDataset"  onchange="optionChanged(this.value)">
+	      	</select>
+	      </div>
+	    </div>
+	    <!-- Create Sample Display -->
+	    <div class="col-lg-12 text-center rounded mb-1 ml-2 pb-1" style="background-color:lightblue;">
+	      <div class="alert alert-primary">Sample MetaData</div>
+	      <div class="alert alert-light">
+	      	<p id="sampledisplay"></p>
+	      </div>
+	    </div>
+	  </div>
+	  <!-- Create Pie Chart -->
+	  <div class="col-lg-5 mb-1 mr-5 pb-1 pt-1 pr-1 pl-1 text-center rounded" style="background-color:lightblue;">
+	    <div id="piechart" style="height: 550px">
+	    </div>
+	  </div>
+	  <!-- Create Gauge Chart -->
+	  <div class="col-lg-4 mb-1 mr-2 pb-1 pt-1 pr-1 pl-1 text-center rounded" style="background-color:lightblue;">
+	    <div id="gaugechart" style="height: 550px">
+	    </div>
+	  </div>
+	</div>
+  </div>
+  <!-- Create Bubble Chart -->
+  <div class="container-fluid">
+	<div class="row mt-5 mb-5">
+      <div class="col-lg-11 mb-1 ml-5 mr-5 pb-1 pt-1 pr-1 pl-1 text-center rounded" style="background-color:lightblue;">
+      	<div id="bubblechart">
+      	</div>
+      </div>
+      <hr>
+    </div>
+  </div>
+  <script src="{{ url_for('static', filename='js/Plotly.js') }}" type="text/javascript"></script>
+</body>
+
+</html>
 ```
-```python
-@app.route('/names')
-    """List of sample names.
 
+2. Create `app.py` file and Used Flask to call the data and create api route
+
+```python
+import datetime as dt
+import numpy as np
+import pandas as pd
+
+from flask import (
+    Flask,
+    render_template,
+    jsonify,
+    request,
+    redirect)
+
+#################################################
+# Flask Setup
+#################################################
+app = Flask(__name__)
+
+#################################################
+# Database Setup
+#################################################
+from sqlalchemy import create_engine
+from sqlalchemy import inspect
+from flask_sqlalchemy import SQLAlchemy
+
+# The database URI
+app.config['SQLALCHEMY_DATABASE_URI'] = "sqlite:///db/belly_button_biodiversity.sqlite"
+db = SQLAlchemy(app)
+engine = create_engine("sqlite:///db/belly_button_biodiversity.sqlite")
+# #################################################
+# # table setup
+# #################################################
+class Otu(db.Model):
+    """docstring for Otu"""
+    __tablename__ = "otu"
+    otu_id = db.Column(db.Integer, primary_key=True)
+    lowest_taxonomic_unit_found = db.Column(db.String)
+
+
+class Metadata(db.Model):
+    __tablename__ = "samples_metadata"
+    sampleid = db.Column(db.Integer, primary_key=True)
+    event = db.Column(db.String)
+    ethnicity = db.Column(db.String)
+    gender = db.Column(db.String)
+    age = db.Column(db.Integer)
+    wfreq = db.Column(db.Float)
+    bbtype = db.Column(db.String)
+    location = db.Column(db.String)
+    country012 = db.Column(db.String)
+    zip012 = db.Column(db.Integer)
+    country1319 = db.Column(db.String)
+    zip1319 = db.Column(db.Integer)
+    dog = db.Column(db.String)
+    cat = db.Column(db.String)
+    impsurface013 = db.Column(db.Integer)
+    npp013 = db.Column(db.Float)
+    mmaxtemp013 = db.Column(db.Float)
+    pfc013 = db.Column(db.Float)
+    impsurface1319 = db.Column(db.Integer)
+    npp1319 = db.Column(db.Float)
+    mmaxtemp1319 = db.Column(db.Float)
+    pfc1319 = db.Column(db.Float)
+
+
+#################################################
+# Flask Routes
+#################################################
+
+@app.route("/")
+def home():
+    """Return the dashboard homepage."""
+    return render_template("index.html")
+
+@app.route("/names")
+def names():
+    """List of sample names.
     Returns a list of sample names in the format
     [
         "BB_940",
@@ -29,15 +170,22 @@ Use Flask to design an API for your dataset and to serve the HTML and JavaScript
         "BB_947",
         ...
     ]
-
     """
-```
-```python
-@app.route('/otu')
+    samplename = []
+    # query for all the sample data
+    inspector = inspect(engine)
+    columns = iter(inspector.get_columns('samples'))
+    next(columns)
+    for column in columns:
+        samplename.append(column['name'])
+    return jsonify(samplename)
+
+
+
+@app.route("/otu")
+def otu():
     """List of OTU descriptions.
-
     Returns a list of OTU descriptions in the following format
-
     [
         "Archaea;Euryarchaeota;Halobacteria;Halobacteriales;Halobacteriaceae;Halococcus",
         "Archaea;Euryarchaeota;Halobacteria;Halobacteriales;Halobacteriaceae;Halococcus",
@@ -47,15 +195,20 @@ Use Flask to design an API for your dataset and to serve the HTML and JavaScript
         ...
     ]
     """
-```
-```python
-@app.route('/metadata/<sample>')
+
+    # query for the otu data
+    low_units_list = db.session.query(Otu.lowest_taxonomic_unit_found).all()
+    low_units = [l[0] for l in low_units_list]
+
+    return jsonify(low_units)
+
+
+@app.route("/metadata/<sample>")
+@app.route("/metadata")
+def metadata(sample="None"):
     """MetaData for a given sample.
-
     Args: Sample in the format: `BB_940`
-
     Returns a json dictionary of sample metadata in the format
-
     {
         AGE: 24,
         BBTYPE: "I",
@@ -65,26 +218,54 @@ Use Flask to design an API for your dataset and to serve the HTML and JavaScript
         SAMPLEID: 940
     }
     """
-```
-```python
-@app.route('/wfreq/<sample>')
+    # query for the sample metadata
+    metadata_ls = []
+    for i in db.session.query(Metadata.age, Metadata.bbtype, Metadata.ethnicity, Metadata.gender, Metadata.location, Metadata.sampleid).all():
+        sample_item = {}
+
+        sample_item['SAMPLEID'] = i[5]
+        sample_item['AGE'] = i[0]
+        sample_item['BBTYPE'] = i[1]
+        sample_item['ETHNICITY'] = i[2]
+        sample_item['GENDER'] = i[3]
+        sample_item['LOCATION'] = i[4]
+
+        metadata_ls.append(sample_item)
+
+    for selection in metadata_ls:
+        if sample[3:] == str(selection['SAMPLEID']):
+            return jsonify(selection)
+
+    return jsonify(metadata)
+    
+@app.route("/wfreq/<sample>")
+@app.route("/wfreq")
+def wfreq(sample="None"):
     """Weekly Washing Frequency as a number.
 
     Args: Sample in the format: `BB_940`
 
     Returns an integer value for the weekly washing frequency `WFREQ`
     """
-```
-```python
-@app.route('/samples/<sample>')
-    """OTU IDs and Sample Values for a given sample.
+    # query for the wfreq data
+    wfreq_ls = []
+    for i in db.session.query(Metadata.wfreq, Metadata.sampleid).all():
+        wfreq_ls.append(i)
+        if sample[3:] == str(i[1]):
+            return jsonify(i[0])
 
+    wfreq_ls = ["{}, {}".format(l[0], l[1]) for l in wfreq_ls]
+
+    return jsonify(wfreq)
+
+@app.route("/samples/<sample>")
+@app.route("/samples")
+def samples(sample="None"):
+    """OTU IDs and Sample Values for a given sample.
     Sort your Pandas DataFrame (OTU ID and Sample Value)
     in Descending Order by Sample Value
-
     Return a list of dictionaries containing sorted lists  for `otu_ids`
     and `sample_values`
-
     [
         {
             otu_ids: [
@@ -102,90 +283,39 @@ Use Flask to design an API for your dataset and to serve the HTML and JavaScript
         }
     ]
     """
+    # query OTU ID and Sample Values
+    df = pd.read_sql('SELECT * FROM samples', engine).set_index('otu_id')
+
+    otu_ids = df['BB_{}'.format(sample[3:])].sort_values(ascending=False).index.tolist()
+    sample_values = df['BB_{}'.format(sample[3:])].sort_values(ascending=False).tolist()
+
+    otu_ids = [int(i) for i in otu_ids]
+    sample_values = [int(i) for i in sample_values]
+
+    result = {'otu_ids': otu_ids, 'sample_values': sample_values}
+
+    return jsonify(result)
+
+
+if __name__ == '__main__':
+    app.run(debug=True)
+
 ```
 
 ---
 
-## Step 2 - Plotly.js
+### Step 2 - Plotly.js
 
-Use Plotly.js to build interactive charts for your dashboard.
-
+Use Plotly.js to build interactive charts for the web dashboard. file can be fould in `\static\js\Plotly.js`. Below are the main objective of the js file. 
 * Use the route `/names` to populate a dropdown select element with the list of sample names.
-
-  * Use `document.getElementById`, `document.createElement` and `append` to populate the create option elements and append them to the dropdown selector.
-
-  * Use the following HTML tag for the dropdown selector
-
-  ```html
-  <select id="selDataset" onchange="optionChanged(this.value)"></select>
-  ```
-  * Create a function called `optionChanged` to handle the change event when a new sample is selected (i.e. fetch data for the newly selected sample).
-
-  ![dropdown](Images/dropdown.png)
-
 * Create a PIE chart that uses data from your routes `/samples/<sample>` and `/otu` to display the top 10 samples.
-
-  * Use the Sample Value as the values for the PIE chart
-
-  * Use the OTU ID as the labels for the pie chart
-
-  * Use the OTU Description as the hovertext for the chart
-
-  * Use `Plotly.restyle` to update the chart whenever a new sample is selected
-
-  ![PIE Chart](Images/pie_chart.png)
-
 * Create a Bubble Chart that uses data from your routes `/samples/<sample>` and `/otu` to plot the __Sample Value__ vs the __OTU ID__ for the selected sample.
-
-  * Use the OTU IDs for the x values
-
-  * Use the Sample Values for the y values
-
-  * Use the Sample Values for the marker size
-
-  * Use the OTU IDs for the marker colors
-
-  * Use the OTU Description Data for the text values
-
-  * Use `Plotly.restyle` to update the chart whenever a new sample is selected
-
-  ![Bubble Chart](Images/bubble_chart.png)
-
 * Display the sample metadata from the route `/metadata/<sample>`
-
-  * Display each key/value pair from the metadata JSON object somewhere on the page
-
-  * Update the metadata for each sample that is selected
-
-* You are welcome to create any layout that you would like for your dashboard. An example dashboard page might look something like the following.
-
-![Example Dashboard Page](Images/dashboard_part1.png)
-![Example Dashboard Page](Images/dashboard_part2.png)
-
-* Finally, deploy your Flask app to Heroku.
-
----
-
-## Optional Challenge Assignment
-
-The following task is completely optional
-
 * Adapt the Gauge Chart from [https://plot.ly/javascript/gauge-charts/](https://plot.ly/javascript/gauge-charts/) to plot the Weekly Washing Frequency obtained from the route `/wfreq/<sample>`
 
-* You will need to modify the example gauge code to account for values ranging from 0 - 9.
+### Result and Deployment 
+* The end result is displayed as below:
+* Again, the dashboard has been deployed to [heroku](https://hw15-belly-button-biodiversity.herokuapp.com/). 
 
-* Use `Plotly.restyle` to update the chart whenever a new sample is selected
-
-![Weekly Washing Frequency Gauge](Images/gauge.png)
-
----
-
-## Hints
-
-* Use `Plotly.d3.json` to fetch data for all of your api routes
-
-* Refer to the [Plotly.js Documentation](https://plot.ly/javascript/) when building the plots
-
-* Use Bootstrap to structure your HTML template.
-
-* Use Pandas inside of your Flask routes to help format, filter, or sort the data before converting to JSON
+![Example Dashboard Page](image/1.PNG)
+![Example Dashboard Page](image/2.PNG)
