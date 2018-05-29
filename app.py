@@ -92,7 +92,7 @@ def names():
     next(columns)
     for column in columns:
         samplename.append(column['name'])
-    return jsonify(sample_names)
+    return jsonify(samplename)
 
 
 

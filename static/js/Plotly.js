@@ -10,7 +10,13 @@ Plotly.d3.json(url, (error, data) => {
                 .attr('value', value)
                     .text(value);
     });
+    // default to first data set
+    MetaDataSample(data[0]);
+    PieChart(data[0]);
+    BubbleChart(data[0]);
+    GaugeChart(data[0]);
 });
+
 
 // Create Dynamic changes on Dropdowm button
 function optionChanged(value){
@@ -25,17 +31,16 @@ function optionChanged(value){
 function MetaDataSample(value){
     // sample meta data
     url1 = "/metadata/";
-    Plotly.d3.json(url1 + value, (error, data) => {
-        if (error) return console.warn(error);
+    Plotly.d3.json(url1 + value, (error0, data0) => {
+        if (error0) return console.warn(error0);
         // select id = 'sampledisplay'
-        $sampleInfo = Plotly.d3.select('.sampledisplay');
-        // clear the current displayed data
-        $sampleInfo.html('');
+        $sampleinfo = Plotly.d3.select('#sampledisplay');
+        // clear the current displayed datas
+        $sampleinfo.html('');
         // populate table with selected data
-        Object.keys(data).forEach((key) => {
-            $sampleInfo
-                .append('text')
-                    .html(key + ": " + data[key])
+        Object.keys(data0).forEach((key) => {
+            $sampleinfo
+                .append('text').html(key + ": " + data0[key])
                 .append('br');
         });
     });
