@@ -17,32 +17,49 @@ app = Flask(__name__)
 #################################################
 # Database Setup
 #################################################
+from sqlalchemy import create_engine
+from sqlalchemy import inspect
 from flask_sqlalchemy import SQLAlchemy
+
 # The database URI
 app.config['SQLALCHEMY_DATABASE_URI'] = "sqlite:///db/belly_button_biodiversity.sqlite"
-# #################################################
-# # database setup
-# #################################################
 db = SQLAlchemy(app)
+engine = create_engine("sqlite:///db/belly_button_biodiversity.sqlite")
+# #################################################
+# # table setup
+# #################################################
+class Otu(db.Model):
+    """docstring for Otu"""
+    __tablename__ = "otu"
+    otu_id = db.Column(db.Integer, primary_key=True)
+    lowest_taxonomic_unit_found = db.Column(db.String)
 
-class Emoji(db.Model):
-    __tablename__ = 'emoji'
 
-    id = db.Column(db.Integer, primary_key=True)
-    emoji_char = db.Column(db.String)
-    emoji_id = db.Column(db.String)
-    name = db.Column(db.String)
-    score = db.Column(db.Integer)
+class Metadata(db.Model):
+    __tablename__ = "samples_metadata"
+    sampleid = db.Column(db.Integer, primary_key=True)
+    event = db.Column(db.String)
+    ethnicity = db.Column(db.String)
+    gender = db.Column(db.String)
+    age = db.Column(db.Integer)
+    wfreq = db.Column(db.Float)
+    bbtype = db.Column(db.String)
+    location = db.Column(db.String)
+    country012 = db.Column(db.String)
+    zip012 = db.Column(db.Integer)
+    country1319 = db.Column(db.String)
+    zip1319 = db.Column(db.Integer)
+    dog = db.Column(db.String)
+    cat = db.Column(db.String)
+    impsurface013 = db.Column(db.Integer)
+    npp013 = db.Column(db.Float)
+    mmaxtemp013 = db.Column(db.Float)
+    pfc013 = db.Column(db.Float)
+    impsurface1319 = db.Column(db.Integer)
+    npp1319 = db.Column(db.Float)
+    mmaxtemp1319 = db.Column(db.Float)
+    pfc1319 = db.Column(db.Float)
 
-    def __repr__(self):
-        return '<Emoji %r>' % (self.name)
-
-# Create database tables
-@app.before_first_request
-def setup():
-    # Recreate database each time for demo
-    # db.drop_all()
-    db.create_all()
 
 #################################################
 # Flask Routes
@@ -68,23 +85,14 @@ def names():
         ...
     ]
     """
-
-    # query for the top 10 emoji data
-    results = db.session.query(Emoji.emoji_char, Emoji.score).\
-        order_by(Emoji.score.desc()).\
-        limit(10).all()
-
-    # Select the top 10 query results
-    emoji_char = [result[0] for result in results]
-    scores = [int(result[1]) for result in results]
-
-    # Generate the plot trace
-    plot_trace = {
-        "x": emoji_char,
-        "y": scores,
-        "type": "bar"
-    }
-    return jsonify(plot_trace)
+    samplename = []
+    # query for all the sample data
+    inspector = inspect(engine)
+    columns = iter(inspector.get_columns('samples'))
+    next(columns)
+    for column in columns:
+        samplename.append(column['name'])
+    return jsonify(sample_names)
 
 
 
@@ -102,20 +110,12 @@ def otu():
     ]
     """
 
+    # query for the otu data
+    low_units_list = db.session.query(Otu.lowest_taxonomic_unit_found).all()
+    low_units = [l[0] for l in low_units_list]
 
-    # query for the emoji data using pandas
-    query_statement = db.session.query(Emoji).\
-    order_by(Emoji.score.desc()).\
-    limit(10).statement
-    df = pd.read_sql_query(query_statement, db.session.bind)
-    
-    # Format the data for Plotly
-    plot_trace = {
-            "x": df["emoji_id"].values.tolist(),
-            "y": df["score"].values.tolist(),
-            "type": "bar"
-    }
-    return jsonify(plot_trace)
+    return jsonify(low_units)
+
 
 @app.route("/metadata/<sample>")
 @app.route("/metadata")
@@ -132,20 +132,26 @@ def metadata(sample="None"):
         SAMPLEID: 940
     }
     """
-    # query for the top 10 emoji data
-    results = db.session.query(Emoji.name, Emoji.score).\
-        order_by(Emoji.score.desc()).\
-        limit(10).all()
-    df = pd.DataFrame(results, columns=['name', 'score'])
+    # query for the sample metadata
+    metadata_ls = []
+    for i in db.session.query(Metadata.age, Metadata.bbtype, Metadata.ethnicity, Metadata.gender, Metadata.location, Metadata.sampleid).all():
+        sample_item = {}
 
-    # Format the data for Plotly
-    plot_trace = {
-            "x": df["name"].values.tolist(),
-            "y": df["score"].values.tolist(),
-            "type": "bar"
-    }
-    return jsonify(plot_trace)
+        sample_item['SAMPLEID'] = i[5]
+        sample_item['AGE'] = i[0]
+        sample_item['BBTYPE'] = i[1]
+        sample_item['ETHNICITY'] = i[2]
+        sample_item['GENDER'] = i[3]
+        sample_item['LOCATION'] = i[4]
 
+        metadata_ls.append(sample_item)
+
+    for selection in metadata_ls:
+        if sample[3:] == str(selection['SAMPLEID']):
+            return jsonify(selection)
+
+    return jsonify(metadata)
+    
 @app.route("/wfreq/<sample>")
 @app.route("/wfreq")
 def wfreq(sample="None"):
@@ -155,19 +161,16 @@ def wfreq(sample="None"):
 
     Returns an integer value for the weekly washing frequency `WFREQ`
     """
-    # query for the top 10 emoji data
-    results = db.session.query(Emoji.name, Emoji.score).\
-        order_by(Emoji.score.desc()).\
-        limit(10).all()
-    df = pd.DataFrame(results, columns=['name', 'score'])
+    # query for the wfreq data
+    wfreq_ls = []
+    for i in db.session.query(Metadata.wfreq, Metadata.sampleid).all():
+        wfreq_ls.append(i)
+        if sample[3:] == str(i[1]):
+            return jsonify(i[0])
 
-    # Format the data for Plotly
-    plot_trace = {
-            "x": df["name"].values.tolist(),
-            "y": df["score"].values.tolist(),
-            "type": "bar"
-    }
-    return jsonify(plot_trace)
+    wfreq_ls = ["{}, {}".format(l[0], l[1]) for l in wfreq_ls]
+
+    return jsonify(wfreq)
 
 @app.route("/samples/<sample>")
 @app.route("/samples")
@@ -194,19 +197,19 @@ def samples(sample="None"):
         }
     ]
     """
-    # query for the top 10 emoji data
-    results = db.session.query(Emoji.name, Emoji.score).\
-        order_by(Emoji.score.desc()).\
-        limit(10).all()
-    df = pd.DataFrame(results, columns=['name', 'score'])
+    # query OTU ID and Sample Values
+    df = pd.read_sql('SELECT * FROM samples', engine).set_index('otu_id')
 
-    # Format the data for Plotly
-    plot_trace = {
-            "x": df["name"].values.tolist(),
-            "y": df["score"].values.tolist(),
-            "type": "bar"
-    }
-    return jsonify(plot_trace)
+    otu_ids = df['BB_{}'.format(sample[3:])].sort_values(ascending=False).index.tolist()
+    sample_values = df['BB_{}'.format(sample[3:])].sort_values(ascending=False).tolist()
+
+    otu_ids = [int(i) for i in otu_ids]
+    sample_values = [int(i) for i in sample_values]
+
+    result = {'otu_ids': otu_ids, 'sample_values': sample_values}
+
+    return jsonify(result)
+
 
 if __name__ == '__main__':
     app.run(debug=True)
