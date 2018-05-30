@@ -17,49 +17,23 @@ app = Flask(__name__)
 #################################################
 # Database Setup
 #################################################
-from sqlalchemy import create_engine
-from sqlalchemy import inspect
+import sqlalchemy
+from sqlalchemy.ext.automap import automap_base
+from sqlalchemy.orm import Session
+from sqlalchemy import create_engine, inspect, func
 from flask_sqlalchemy import SQLAlchemy
 
-# The database URI
-app.config['SQLALCHEMY_DATABASE_URI'] = "sqlite:///db/belly_button_biodiversity.sqlite"
-db = SQLAlchemy(app)
-engine = create_engine("sqlite:///db/belly_button_biodiversity.sqlite")
-# #################################################
-# # table setup
-# #################################################
-class Otu(db.Model):
-    """docstring for Otu"""
-    __tablename__ = "otu"
-    otu_id = db.Column(db.Integer, primary_key=True)
-    lowest_taxonomic_unit_found = db.Column(db.String)
-
-
-class Metadata(db.Model):
-    __tablename__ = "samples_metadata"
-    sampleid = db.Column(db.Integer, primary_key=True)
-    event = db.Column(db.String)
-    ethnicity = db.Column(db.String)
-    gender = db.Column(db.String)
-    age = db.Column(db.Integer)
-    wfreq = db.Column(db.Float)
-    bbtype = db.Column(db.String)
-    location = db.Column(db.String)
-    country012 = db.Column(db.String)
-    zip012 = db.Column(db.Integer)
-    country1319 = db.Column(db.String)
-    zip1319 = db.Column(db.Integer)
-    dog = db.Column(db.String)
-    cat = db.Column(db.String)
-    impsurface013 = db.Column(db.Integer)
-    npp013 = db.Column(db.Float)
-    mmaxtemp013 = db.Column(db.Float)
-    pfc013 = db.Column(db.Float)
-    impsurface1319 = db.Column(db.Integer)
-    npp1319 = db.Column(db.Float)
-    mmaxtemp1319 = db.Column(db.Float)
-    pfc1319 = db.Column(db.Float)
-
+ # Create engine using the `hawaii.sqlite` database file
+engine = create_engine("sqlite:///db/belly_button_biodiversity.sqlite", echo=False)
+# Declare a Base using `automap_base()`
+Base = automap_base() 
+ # Use the Base class to reflect the database tables
+Base.prepare(engine, reflect=True)
+ # Assign the measuremens and stations classes to variables called `Measaurement` and `Station`
+Otu = Base.classes.otu
+Samples = Base.classes.samples
+Metadata = Base.classes.samples_metadata
+session = Session(engine)
 
 #################################################
 # Flask Routes
@@ -87,11 +61,11 @@ def names():
     """
     samplename = []
     # query for all the sample data
-    inspector = inspect(engine)
-    columns = iter(inspector.get_columns('samples'))
-    next(columns)
-    for column in columns:
-        samplename.append(column['name'])
+    ins = inspect(engine)
+    columns = ins.get_columns('samples')
+    for c in columns:
+        samplename.append(c['name'])
+    samplename.remove('otu_id')
     return jsonify(samplename)
 
 
@@ -111,7 +85,7 @@ def otu():
     """
 
     # query for the otu data
-    low_units_list = db.session.query(Otu.lowest_taxonomic_unit_found).all()
+    low_units_list = session.query(Otu.lowest_taxonomic_unit_found).all()
     low_units = [l[0] for l in low_units_list]
 
     return jsonify(low_units)
@@ -134,15 +108,15 @@ def metadata(sample="None"):
     """
     # query for the sample metadata
     metadata_ls = []
-    for i in db.session.query(Metadata.age, Metadata.bbtype, Metadata.ethnicity, Metadata.gender, Metadata.location, Metadata.sampleid).all():
+    for i in session.query(Metadata.SAMPLEID,Metadata.AGE, Metadata.BBTYPE, Metadata.ETHNICITY, Metadata.GENDER, Metadata.LOCATION).all():
         sample_item = {}
 
-        sample_item['SAMPLEID'] = i[5]
-        sample_item['AGE'] = i[0]
-        sample_item['BBTYPE'] = i[1]
-        sample_item['ETHNICITY'] = i[2]
-        sample_item['GENDER'] = i[3]
-        sample_item['LOCATION'] = i[4]
+        sample_item['SAMPLEID'] = i[0]
+        sample_item['AGE'] = i[1]
+        sample_item['BBTYPE'] = i[2]
+        sample_item['ETHNICITY'] = i[3]
+        sample_item['GENDER'] = i[4]
+        sample_item['LOCATION'] = i[5]
 
         metadata_ls.append(sample_item)
 
@@ -163,7 +137,7 @@ def wfreq(sample="None"):
     """
     # query for the wfreq data
     wfreq_ls = []
-    for i in db.session.query(Metadata.wfreq, Metadata.sampleid).all():
+    for i in session.query(Metadata.WFREQ, Metadata.SAMPLEID).all():
         wfreq_ls.append(i)
         if sample[3:] == str(i[1]):
             return jsonify(i[0])
