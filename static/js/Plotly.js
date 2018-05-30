@@ -55,16 +55,16 @@ function PieChart(value){
 
         Plotly.d3.json('/otu', (error2,data2) => {
           if (error2) return console.warn(error2);
-
-          var labelIndex = data1.otu_ids.slice(0,10);
+            // get top ten otu_ids
+          var labelid = data1.otu_ids.slice(0,10);
 
           var trace1 = {
             values: data1.sample_values.slice(0,10),
-            labels: data1.otu_ids.slice(0,10),
+            labels: labelid,
             type: 'pie',
-            text: labelIndex.map( x => data2[x]),
+            text: labelid.map( x => data2[x]),
             textinfo: 'percent',
-            hoverinfo: 'label+text+value'
+            hoverinfo: 'label+text+value+percent'
           };
 
           var plotData = [trace1];

@@ -85,10 +85,10 @@ def otu():
     """
 
     # query for the otu data
-    low_units_list = session.query(Otu.lowest_taxonomic_unit_found).all()
-    low_units = [l[0] for l in low_units_list]
+    otuList = session.query(Otu.lowest_taxonomic_unit_found).all()
+    otuDesc = [l[0] for l in otuList]
 
-    return jsonify(low_units)
+    return jsonify(otuDesc)
 
 
 @app.route("/metadata/<sample>")
@@ -120,10 +120,10 @@ def metadata(sample="None"):
 
         metadata_ls.append(sample_item)
 
-    for selection in metadata_ls:
-        if sample[3:] == str(selection['SAMPLEID']):
-            return jsonify(selection)
-
+    for selectitem in metadata_ls:
+    # add"BB_" to the  sampleid 
+        if sample == "BB_" + str(selectitem['SAMPLEID']):
+            return jsonify(selectitem)
     return jsonify(metadata)
     
 @app.route("/wfreq/<sample>")
@@ -136,13 +136,13 @@ def wfreq(sample="None"):
     Returns an integer value for the weekly washing frequency `WFREQ`
     """
     # query for the wfreq data
-    wfreq_ls = []
+    wfreqls = []
     for i in session.query(Metadata.WFREQ, Metadata.SAMPLEID).all():
-        wfreq_ls.append(i)
-        if sample[3:] == str(i[1]):
+        wfreqls.append(i)
+        if sample == "BB_" + str(i[1]):
             return jsonify(i[0])
 
-    wfreq_ls = ["{}, {}".format(l[0], l[1]) for l in wfreq_ls]
+    wfreq = [f"{l[0]}, {l[1]}" for l in wfreqls]
 
     return jsonify(wfreq)
 
